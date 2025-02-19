@@ -104,11 +104,13 @@ if uploaded_file:
         # Drop Unnecessary Columns
         st.header("🗑️ Drop Unnecessary Columns")
         columns_to_drop = st.multiselect("Select columns to drop", df.columns)
-        if columns_to_drop:
-            df.drop(columns=columns_to_drop, inplace=True)
-            st.success(f"✅ Dropped columns: {', '.join(columns_to_drop)}")
-            st.write("📌 Updated Dataset After Dropping Columns:")
-            st.dataframe(df.head())
+        drop_button = st.button("Drop Column")
+        if drop_button:
+            if columns_to_drop:
+                df.drop(columns=columns_to_drop, inplace=True)
+                st.success(f"✅ Dropped columns: {', '.join(columns_to_drop)}")
+                st.write("📌 Updated Dataset After Dropping Columns:")
+                st.dataframe(df.head())
             # **Choose Inconsistency Handling Method**
         inconsistency_option = st.radio("📌 Choose Inconsistency Handling:", ("Data Type Conversion", "Filter/Search", "Replace Values"))
 
@@ -153,13 +155,21 @@ if uploaded_file:
 
                 st.success(f"✅ Column **{column_to_convert}** converted to **{new_dtype}**")
                 # **Display Updated Data**
-                st.subheader("📌 Updated Data Types")
-                st.write(df.dtypes)
+                col1,col2 = st.columns(2)
+                with col1:
+                    st.subheader("📌 Updated Data Types")
+                    st.write(df.dtypes)
+                with col2:
+                    st.subheader("📊 Updated Data Preview")
+                    st.dataframe(df)
 
         # **Filter/Search Handling**
         elif inconsistency_option == "Filter/Search":
-            selected_col = st.selectbox("🔎 Select Column to Search/Filter", df.columns)
-            search_value = st.text_input("🔍 Enter value to search")
+            col1, col2 = st.columns(2)
+            with col1:
+                selected_col = st.selectbox("🔎 Select Column to Search/Filter", df.columns)
+            with col2:           
+                search_value = st.text_input("🔍 Enter value to search")
 
             if search_value:
                 filtered_df = df[df[selected_col].astype(str).str.contains(search_value, case=False, na=False)]
@@ -169,22 +179,21 @@ if uploaded_file:
         # **Replace Values Handling**
         elif inconsistency_option == "Replace Values":
             selected_col = st.selectbox("🛠 Select Column to Replace Values", df.columns)
-            old_value = st.text_input("✏️ Enter value to replace")
-            new_value = st.text_input("✅ Enter new value")
-
+            col1, col2 = st.columns(2)
+            with col1:
+                old_value = st.text_input("✏️ Enter value to replace")
+            with col2:
+                new_value = st.text_input("✅ Enter new value")
+            
             if old_value and new_value:
                 df[selected_col] = df[selected_col].replace(old_value, new_value)
                 st.success(f"✅ '{old_value}' replaced with '{new_value}' in column {selected_col}")
-                st.write("📌 Updated Dataset Preview:")
+                # st.write("📌 Updated Dataset Preview:")
                 st.dataframe(df.head())
 
         # Store Updated DataFrame
         st.session_state.df = df
-
-        
-
-        st.subheader("📊 Updated Data Preview")
-        st.dataframe(df)
+    
         
         
 
@@ -219,12 +228,13 @@ if uploaded_file:
             col1 ,col2 = st.columns(2)
             with col1:
                 x_axis = st.selectbox("📌 Select X-Axis", df.columns, key="multi_x")
+                hue = st.selectbox("📌 Select Hue column", df.columns, key="multi_hue")
             with col2:
                 y_axis = st.selectbox("📌 Select Y-Axis", df.columns, key="multi_y")
             multi_chart_option = st.selectbox("📊 Select Multivariate Chart Type", ["Scatter Plot", "Line Chart"], key="multi_chart")
 
             if st.button("➕ Add Multivariate Plot", key="add_multi"):
-                st.session_state.eda_plots.append(("Multivariate", x_axis, y_axis, multi_chart_option))
+                st.session_state.eda_plots.append(("Multivariate", x_axis, y_axis, hue,multi_chart_option))
 
         # **Step 3: Display All Selected Plots**
         for idx, plot in enumerate(st.session_state.eda_plots):
@@ -237,20 +247,24 @@ if uploaded_file:
 
                 if chart == "Histogram":
                     sns.histplot(df[col], kde=True, ax=ax)
+                    plt.xticks(rotation='vertical')
                 elif chart == "Box Plot":
                     sns.boxplot(x=df[col], ax=ax)
                 elif chart == "Bar Chart":
                     df[col].value_counts().plot(kind="bar", ax=ax)
+                    plt.xticks(rotation='vertical')
 
             # Handle Multivariate Analysis
             elif plot[0] == "Multivariate":
-                analysis, x_col, y_col, chart = plot  # Unpack 4 elements
+                analysis, x_col, y_col,hue,chart = plot  # Unpack 4 elements
                 st.subheader(f"📊 {chart} for {x_col} vs {y_col}")
 
                 if chart == "Scatter Plot":
-                    sns.scatterplot(x=df[x_col], y=df[y_col], ax=ax)
+                    sns.scatterplot(x=df[x_col], y=df[y_col], ax=ax,hue=df[hue])
+                    plt.xticks(rotation='vertical')
                 elif chart == "Line Chart":
-                    sns.lineplot(x=df[x_col], y=df[y_col], ax=ax)
+                    sns.lineplot(x=df[x_col], y=df[y_col], ax=ax,hue=df[hue])
+                    plt.xticks(rotation='vertical')
 
             st.pyplot(fig)
 
