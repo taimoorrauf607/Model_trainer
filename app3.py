@@ -168,29 +168,29 @@ if uploaded_file:
                     st.session_state["trained_model"] = model
                     st.session_state["feature_columns"] = feature_columns
 
-# Upload Test Dataset for Prediction
-st.header("2️⃣ Upload Test Dataset for Prediction")
-test_file = st.file_uploader("Upload your test dataset (CSV) for predictions", type=["csv"])
+        # Upload Test Dataset for Prediction
+        st.header("2️⃣ Upload Test Dataset for Prediction")
+        test_file = st.file_uploader("Upload your test dataset (CSV) for predictions", type=["csv"])
 
-if test_file and "trained_model" in st.session_state:
-    test_df = pd.read_csv(test_file)
-    st.write("📌 Test Dataset Preview:")
-    st.dataframe(test_df.head())
+        if test_file and "trained_model" in st.session_state:
+            test_df = pd.read_csv(test_file)
+            st.write("📌 Test Dataset Preview:")
+            st.dataframe(test_df.head())
 
-    missing_cols = [col for col in st.session_state["feature_columns"] if col not in test_df.columns]
-    if missing_cols:
-        st.error(f"❌ Missing columns in test file: {missing_cols}")
-    else:
-        if st.button("📊 Make Predictions"):
-            predictions = st.session_state["trained_model"].predict(test_df[st.session_state["feature_columns"]])
-            submission_df = pd.DataFrame({
-                "id": range(300000, 300000 + len(test_df)),
-                "submission": predictions
-            })
+            missing_cols = [col for col in st.session_state["feature_columns"] if col not in test_df.columns]
+            if missing_cols:
+                st.error(f"❌ Missing columns in test file: {missing_cols}")
+            else:
+                if st.button("📊 Make Predictions"):
+                    predictions = st.session_state["trained_model"].predict(test_df[st.session_state["feature_columns"]])
+                    submission_df = pd.DataFrame({
+                        "id": range(300000, 300000 + len(test_df)),
+                        "submission": predictions
+                    })
 
-            st.success("✅ Predictions made successfully!")
-            st.write("📌 Preview of Submission File:")
-            st.dataframe(submission_df.head())
+                    st.success("✅ Predictions made successfully!")
+                    st.write("📌 Preview of Submission File:")
+                    st.dataframe(submission_df.head())
 
-            csv = submission_df.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Download Submission File", data=csv, file_name="submission.csv", mime="text/csv")
+                    csv = submission_df.to_csv(index=False).encode('utf-8')
+                    st.download_button("📥 Download Submission File", data=csv, file_name="submission.csv", mime="text/csv")

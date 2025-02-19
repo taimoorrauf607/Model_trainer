@@ -5,6 +5,14 @@ import io  # For file handling
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 import matplotlib.pyplot as plt
 import seaborn as sns
+from catboost import CatBoostRegressor, Pool
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+from sklearn.ensemble import StackingRegressor
+from sklearn.linear_model import LinearRegression
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 
 # Title
 st.title("🎯 Machine Learning Model Trainer")
@@ -63,7 +71,6 @@ if uploaded_file:
     # ⚙️ HANDLE MISSING VALUES
     elif preprocess == "⚙️ Handle Missing Values":
         df_missing = df.copy()
-
         for col in df_missing.columns:
             if df_missing[col].isnull().sum() > 0:
                 # Categorical Columns
@@ -112,7 +119,7 @@ if uploaded_file:
                 st.write("📌 Updated Dataset After Dropping Columns:")
                 st.dataframe(df.head())
             # **Choose Inconsistency Handling Method**
-        inconsistency_option = st.radio("📌 Choose Inconsistency Handling:", ("Data Type Conversion", "Filter/Search", "Replace Values"))
+        inconsistency_option = st.radio("📌 Choose Inconsistency Handling:", ("Data Type Conversion", "Filter/Search", "Replace Values",'remove char'))
 
         # **Data Type Conversion Handling**
         if inconsistency_option == "Data Type Conversion":
@@ -190,12 +197,23 @@ if uploaded_file:
                 st.success(f"✅ '{old_value}' replaced with '{new_value}' in column {selected_col}")
                 # st.write("📌 Updated Dataset Preview:")
                 st.dataframe(df.head())
+        elif inconsistency_option =='remove char':
+            st.dataframe(df)
+            selected_col = st.selectbox("🛠 Select Column to remove Values", df.columns)
+            col1, col2 = st.columns(2)
+            with col1:
+                old_vl = st.text_input("✏️ Enter value to remove:")
+            with col2:
+                exp = st.text_input("Enter Regular expression:")
+            if old_vl or exp:
+                df[selected_col] = df[selected_col].replace(old_vl or exp,'',regex=True)
+                st.success(f"✅ '{old_vl}' remove from column {selected_col}")
+                st.dataframe(df)
+                st.write("📌 Updated Dataset Preview:")
+
 
         # Store Updated DataFrame
         st.session_state.df = df
-    
-        
-        
 
         # Store in session state to keep modifications
         st.session_state["df_processed"] = df
@@ -210,7 +228,7 @@ if uploaded_file:
             st.session_state.eda_plots = []
 
         # **Step 1: Select Analysis Type**
-        analysis_type = st.radio("📊 Select Analysis Type", ["Univariate Analysis", "Multivariate Analysis"], key="eda_type")
+        analysis_type = st.radio("📊 Select Analysis Type", ["Univariate Analysis","Bi-variate Analysis" ,"Multivariate Analysis"], key="eda_type")
 
         # **Univariate Analysis**
         if analysis_type == "Univariate Analysis":
@@ -223,6 +241,18 @@ if uploaded_file:
             if st.button("➕ Add Univariate Plot", key="add_univar"):
                 st.session_state.eda_plots.append(("Univariate", selected_column, chart_option))
 
+        # **bivariate Analysis**
+        elif analysis_type == "Bi-variate Analysis":
+            col1 ,col2 = st.columns(2)
+            with col1:
+                x_axis = st.selectbox("📌 Select X-Axis", df.columns, key="bi_x")
+            with col2:
+                y_axis = st.selectbox("📌 Select Y-Axis", df.columns, key="bi_y")
+            multi_chart_option = st.selectbox("📊 Select bivariate Chart Type", ["Scatter Plot", "Line Chart"], key="bi_chart")
+
+            if st.button("➕ Add Bi-variate Plot", key="add_bi"):
+                st.session_state.eda_plots.append(("bivariate", x_axis, y_axis,multi_chart_option))
+        
         # **Multivariate Analysis**
         elif analysis_type == "Multivariate Analysis":
             col1 ,col2 = st.columns(2)
@@ -253,6 +283,18 @@ if uploaded_file:
                 elif chart == "Bar Chart":
                     df[col].value_counts().plot(kind="bar", ax=ax)
                     plt.xticks(rotation='vertical')
+                    
+            # Handle bivariate Analysis
+            elif plot[0] == "bivariate":
+                analysis, x_col, y_col,chart = plot  # Unpack 4 elements
+                st.subheader(f"📊 {chart} for {x_col} vs {y_col}")
+                if chart == "Scatter Plot":
+                    sns.scatterplot(x=df[x_col], y=df[y_col], ax=ax)
+                    plt.xticks(rotation='vertical')
+                        
+                elif chart == "Line Chart":
+                    sns.lineplot(x=df[x_col], y=df[y_col], ax=ax)
+                    plt.xticks(rotation='vertical')
 
             # Handle Multivariate Analysis
             elif plot[0] == "Multivariate":
@@ -262,19 +304,17 @@ if uploaded_file:
                 if chart == "Scatter Plot":
                     sns.scatterplot(x=df[x_col], y=df[y_col], ax=ax,hue=df[hue])
                     plt.xticks(rotation='vertical')
+                        
                 elif chart == "Line Chart":
                     sns.lineplot(x=df[x_col], y=df[y_col], ax=ax,hue=df[hue])
                     plt.xticks(rotation='vertical')
-
+            
             st.pyplot(fig)
-
 
         # **Refresh Button**
         if st.button("🔄 Refresh EDA"):
             st.session_state.eda_plots = []  # Clear session state
             st.rerun()
-
-
 
     # FEATURE ENGINEERING
     elif preprocess == "Feature Eng":
@@ -348,3 +388,89 @@ if uploaded_file:
         )
 
         st.success("✅ Processed dataset is ready for download!")
+
+
+    elif preprocess=='Train Model only':
+         # # Selecting Features and Target
+        target_column = st.selectbox("🎯 Select Target Column", df.columns)
+        feature_columns = st.multiselect("📊 Select Feature Columns", df.columns, default=[col for col in df.columns if col != target_column])
+
+        if feature_columns and target_column:
+            X = df[feature_columns]
+            y = df[target_column]
+        # Split dataset
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+        # Sidebar: Choose Model Type
+        model_type = st.sidebar.radio("Select Model Type", ("Regression", "Classification"))
+
+        if model_type == "Regression":
+            regressor_choice = st.sidebar.selectbox("Choose Regressor", ("CatBoost", "Stacking"))
+
+            if regressor_choice == "CatBoost":
+                # Sidebar: CatBoost Parameters
+                st.sidebar.header("⚙️ CatBoost Parameters")
+                iterations = st.sidebar.number_input("Iterations", value=1000, step=10, format="%d")
+                learning_rate = st.sidebar.number_input("Learning Rate", value=0.1, format="%.6f")
+                l2_leaf_reg = st.sidebar.number_input("L2 Leaf Regularization", value=3.5, format="%.6f")
+                depth = st.sidebar.number_input("Depth", 1, 16, 6, 1)
+
+                if st.button("🚀 Train Model"):
+                    model = CatBoostRegressor(
+                        iterations=iterations,
+                        learning_rate=learning_rate,
+                        depth=depth,
+                        l2_leaf_reg=l2_leaf_reg,
+                        verbose=0
+                    )
+                    model.fit(X_train, y_train, early_stopping_rounds=50, verbose=False)
+
+                    y_pred = model.predict(X_test)
+                    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+                    st.success(f"✅ Model Trained Successfully! RMSE Score: {rmse:.6f}")
+                    st.session_state["trained_model"] = model
+                    st.session_state["feature_columns"] = feature_columns
+
+            elif regressor_choice == "Stacking":
+                base_learners = [
+                    ("lr", LinearRegression()),
+                    ("dt", DecisionTreeRegressor()),
+                    ("rf", RandomForestRegressor())
+                ]
+                meta_learner = LinearRegression()
+                model = StackingRegressor(estimators=base_learners, final_estimator=meta_learner)
+
+                if st.button("🚀 Train Model"):
+                    model.fit(X_train, y_train)
+                    y_pred = model.predict(X_test)
+                    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+                    st.success(f"✅ Model Trained Successfully! RMSE Score: {rmse:.6f}")
+                    st.session_state["trained_model"] = model
+                    st.session_state["feature_columns"] = feature_columns
+
+        # Upload Test Dataset for Prediction
+        st.header("2️⃣ Upload Test Dataset for Prediction")
+        test_file = st.file_uploader("Upload your test dataset (CSV) for predictions", type=["csv"])
+
+        if test_file and "trained_model" in st.session_state:
+            test_df = pd.read_csv(test_file)
+            st.write("📌 Test Dataset Preview:")
+            st.dataframe(test_df.head())
+
+            missing_cols = [col for col in st.session_state["feature_columns"] if col not in test_df.columns]
+            if missing_cols:
+                st.error(f"❌ Missing columns in test file: {missing_cols}")
+            else:
+                if st.button("📊 Make Predictions"):
+                    predictions = st.session_state["trained_model"].predict(test_df[st.session_state["feature_columns"]])
+                    submission_df = pd.DataFrame({
+                        "id": range(300000, 300000 + len(test_df)),
+                        "submission": predictions
+                    })
+
+                    st.success("✅ Predictions made successfully!")
+                    st.write("📌 Preview of Submission File:")
+                    st.dataframe(submission_df.head())
+
+                    csv = submission_df.to_csv(index=False).encode('utf-8')
+                    st.download_button("📥 Download Submission File", data=csv, file_name="submission.csv", mime="text/csv")
