@@ -15,16 +15,14 @@ uploaded_file = st.file_uploader("Upload your dataset (CSV)", type=["csv"])
 
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
-    
-    st.title("welcome to Data preprocessing part")
-        # Ensure df is stored in session state to persist changes
+    st.title("Welcome to Data Preprocessing")
+
     if "df_processed" not in st.session_state:
         st.session_state["df_processed"] = df.copy()
-
-    df = st.session_state["df_processed"]  # Always use the latest processed dataset
+    df = st.session_state["df_processed"]
 
     # Sidebar - Preprocessing Steps
-    preprocess_options = ["📊 Data Overview", "🔎 Inconsistency", "📈 EDA", "⚙️ Feature Eng", "🤖 Train Model only"]
+    preprocess_options = ["📊 Data Overview", "Inconsistency", "EDA", "Feature Eng", "Train Model only"]
     if df.isnull().sum().sum() > 0:
         preprocess_options.insert(1, "⚙️ Handle Missing Values")
 
@@ -103,23 +101,11 @@ if uploaded_file:
 
     # 🔎 INCONSISTENCY HANDLING
     elif preprocess == "Inconsistency":
-        # Drop Unnecessary Columns
-        st.header("🗑️ Drop Unnecessary Columns")
-        columns_to_drop = st.multiselect("Select columns to drop", df.columns)
-        if columns_to_drop:
-            df.drop(columns=columns_to_drop, inplace=True)
-            st.success(f"✅ Dropped columns: {', '.join(columns_to_drop)}")
-            st.write("📌 Updated Dataset After Dropping Columns:")
-            st.dataframe(df.head())
-
         inconsistency_option = st.radio("Choose inconsistency handling:", ("Filter/Search", "Replace Values"))
 
         if inconsistency_option == "Filter/Search":
-            col1 , col2= st.columns(2)
-            with col1:
-                selected_col = st.selectbox("🔎 Select Column to Search/Filter", df.columns)
-            with col2:
-                search_value = st.text_input("🔍 Enter value to search")
+            selected_col = st.selectbox("🔎 Select Column to Search/Filter", df.columns)
+            search_value = st.text_input("🔍 Enter value to search")
 
             if search_value:
                 filtered_df = df[df[selected_col].astype(str).str.contains(search_value, case=False, na=False)]
@@ -128,11 +114,8 @@ if uploaded_file:
 
         elif inconsistency_option == "Replace Values":
             selected_col = st.selectbox("🛠 Select Column to Replace Values", df.columns)
-            col1 , col2= st.columns(2)
-            with col1:
-                old_value = st.text_input("✏️ Enter value to replace")
-            with col2:
-                new_value = st.text_input("✅ Enter new value")
+            old_value = st.text_input("✏️ Enter value to replace")
+            new_value = st.text_input("✅ Enter new value")
 
             if old_value and new_value:
                 df[selected_col] = df[selected_col].replace(old_value, new_value)
@@ -143,69 +126,65 @@ if uploaded_file:
         # Store in session state to keep modifications
         st.session_state["df_processed"] = df
 
-            # 📈 EDA (Exploratory Data Analysis)
-    elif preprocess == "📈 EDA":
+
+    # **📊 EDA Section (Only Runs if `preprocess == "EDA"`)**
+    elif preprocess == "EDA":
+       # **📊 EDA Section (Only Runs if `preprocess == "EDA"`)**
         st.header("📊 Exploratory Data Analysis")
 
+        # Initialize session state for EDA plots
         if "eda_plots" not in st.session_state:
             st.session_state.eda_plots = []
 
-        # Select Univariate or Multivariate Analysis
-        analysis_type = st.radio("📊 Select Analysis Type", ["Univariate Analysis", "Multivariate Analysis"], key=f"eda_type_{len(st.session_state.eda_plots)}")
+        # **Step 1: Select Analysis Type**
+        analysis_type = st.radio("📊 Select Analysis Type", ["Univariate Analysis", "Multivariate Analysis"], key="eda_type")
 
-        # Univariate Analysis
+        # **Univariate Analysis**
         if analysis_type == "Univariate Analysis":
-            selected_column = st.selectbox("📌 Select Column for Univariate Analysis", df.columns, key=f"univar_col_{len(st.session_state.eda_plots)}")
-            chart_option = st.selectbox("📊 Select Chart Type", ["Histogram", "Box Plot", "Bar Chart"], key=f"univar_chart_{len(st.session_state.eda_plots)}")
+            selected_column = st.selectbox("📌 Select Column", df.columns, key="univar_col")
+            chart_option = st.selectbox("📊 Select Chart Type", ["Histogram", "Box Plot", "Bar Chart"], key="univar_chart")
 
-            if st.button("➕ Add Univariate Plot", key=f"add_univar_{len(st.session_state.eda_plots)}"):
+            if st.button("➕ Add Univariate Plot", key="add_univar"):
                 st.session_state.eda_plots.append(("Univariate", selected_column, chart_option))
 
-        # Multivariate Analysis
+        # **Multivariate Analysis**
         elif analysis_type == "Multivariate Analysis":
-            selected_columns = st.multiselect("📌 Select Columns for Multivariate Analysis", df.columns, key=f"multi_col_{len(st.session_state.eda_plots)}")
-            multi_chart_option = st.selectbox("📊 Select Multivariate Chart Type", ["Scatter Plot", "Line Chart", "Pair Plot", "Heatmap"], key=f"multi_chart_{len(st.session_state.eda_plots)}")
+            col1 ,col2 = st.columns(2)
+            with col1:
+                x_axis = st.selectbox("📌 Select X-Axis", df.columns, key="multi_x")
+            with col2:
+                y_axis = st.selectbox("📌 Select Y-Axis", df.columns, key="multi_y")
+            multi_chart_option = st.selectbox("📊 Select Multivariate Chart Type", ["Scatter Plot", "Line Chart"], key="multi_chart")
 
-            if st.button("➕ Add Multivariate Plot", key=f"add_multi_{len(st.session_state.eda_plots)}"):
-                st.session_state.eda_plots.append(("Multivariate", selected_columns, multi_chart_option))
+            if st.button("➕ Add Multivariate Plot", key="add_multi"):
+                st.session_state.eda_plots.append(("Multivariate", x_axis, y_axis, multi_chart_option))
 
-        # 🔥 Display All Selected Plots Separately
-        for idx, (analysis, cols, chart) in enumerate(st.session_state.eda_plots):
-            st.subheader(f"📊 {chart} for {cols}")
+        # **Step 3: Display All Selected Plots**
+        for idx, (analysis, col1, col2, chart) in enumerate(st.session_state.eda_plots):
+            st.subheader(f"📊 {chart} for {col1} vs {col2}")
 
             fig, ax = plt.subplots()
-            
+
             if analysis == "Univariate":
                 if chart == "Histogram":
-                    sns.histplot(df[cols], kde=True, ax=ax)
+                    sns.histplot(df[col1], kde=True, ax=ax)
                 elif chart == "Box Plot":
-                    sns.boxplot(x=df[cols], ax=ax)
+                    sns.boxplot(x=df[col1], ax=ax)
                 elif chart == "Bar Chart":
-                    df[cols].value_counts().plot(kind="bar", ax=ax)
+                    df[col1].value_counts().plot(kind="bar", ax=ax)
 
             elif analysis == "Multivariate":
                 if chart == "Scatter Plot":
-                    if len(cols) >= 2:
-                        sns.scatterplot(x=df[cols[0]], y=df[cols[1]], ax=ax)
-                    else:
-                        st.warning("⚠️ Please select at least two columns for a Scatter Plot.")
+                    sns.scatterplot(x=df[col1], y=df[col2], ax=ax)
                 elif chart == "Line Chart":
-                    if len(cols) >= 2:
-                        sns.lineplot(x=df[cols[0]], y=df[cols[1]], ax=ax)
-                    else:
-                        st.warning("⚠️ Please select at least two columns for a Line Chart.")
-                elif chart == "Pair Plot":
-                    if len(cols) > 1:
-                        fig = sns.pairplot(df[cols])
-                    else:
-                        st.warning("⚠️ Please select at least two columns for a Pair Plot.")
-                elif chart == "Heatmap":
-                    if len(cols) > 1:
-                        sns.heatmap(df[cols].corr(), annot=True, cmap="coolwarm", ax=ax)
-                    else:
-                        st.warning("⚠️ Please select at least two columns for a Heatmap.")
+                    sns.lineplot(x=df[col1], y=df[col2], ax=ax)
 
             st.pyplot(fig)
+
+        # **Refresh Button**
+        if st.button("🔄 Refresh EDA"):
+            st.session_state.eda_plots = []  # Clear session state
+            st.rerun()
 
 
 
