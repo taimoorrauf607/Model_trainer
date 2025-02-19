@@ -101,9 +101,63 @@ if uploaded_file:
 
     # 🔎 INCONSISTENCY HANDLING
     elif preprocess == "Inconsistency":
-        inconsistency_option = st.radio("Choose inconsistency handling:", ("Filter/Search", "Replace Values"))
+        # Drop Unnecessary Columns
+        st.header("🗑️ Drop Unnecessary Columns")
+        columns_to_drop = st.multiselect("Select columns to drop", df.columns)
+        if columns_to_drop:
+            df.drop(columns=columns_to_drop, inplace=True)
+            st.success(f"✅ Dropped columns: {', '.join(columns_to_drop)}")
+            st.write("📌 Updated Dataset After Dropping Columns:")
+            st.dataframe(df.head())
+            # **Choose Inconsistency Handling Method**
+        inconsistency_option = st.radio("📌 Choose Inconsistency Handling:", ("Data Type Conversion", "Filter/Search", "Replace Values"))
 
-        if inconsistency_option == "Filter/Search":
+        # **Data Type Conversion Handling**
+        if inconsistency_option == "Data Type Conversion":
+            with st.form("data_type_conversion_form"):
+                # **Column Selection**
+                column_to_convert = st.selectbox("📌 Select Column to Change Data Type", df.columns, key="inconsistency_col")
+
+                # **Data Type Selection**
+                new_dtype = st.selectbox("🔄 Convert Data Type To", ["int", "float", "string", "date"], key="dtype_selection")
+
+                # **Date Component Selection (Only when 'date' is selected)**
+                date_component = None
+                if new_dtype == "date":
+                    date_component = st.radio("📌 Extract Date Component", ["Full Date", "Year", "Month", "Day"], horizontal=True, key="date_component")
+
+                # **Submit Button**
+                submit_button = st.form_submit_button("✅ Convert Data Type")
+
+            # **Process conversion after submit button is clicked**
+            if submit_button:
+                if new_dtype == "int":
+                    df[column_to_convert] = pd.to_numeric(df[column_to_convert], errors="coerce").astype("Int64")
+
+                elif new_dtype == "float":
+                    df[column_to_convert] = pd.to_numeric(df[column_to_convert], errors="coerce").astype("float")
+
+                elif new_dtype == "string":
+                    df[column_to_convert] = df[column_to_convert].astype("string")
+
+                elif new_dtype == "date":
+                    df[column_to_convert] = pd.to_datetime(df[column_to_convert], errors="coerce")
+
+                    # **Extract Date Components if selected**
+                    if date_component == "Year":
+                        df[column_to_convert] = df[column_to_convert].dt.year
+                    elif date_component == "Month":
+                        df[column_to_convert] = df[column_to_convert].dt.month
+                    elif date_component == "Day":
+                        df[column_to_convert] = df[column_to_convert].dt.day
+
+                st.success(f"✅ Column **{column_to_convert}** converted to **{new_dtype}**")
+                # **Display Updated Data**
+                st.subheader("📌 Updated Data Types")
+                st.write(df.dtypes)
+
+        # **Filter/Search Handling**
+        elif inconsistency_option == "Filter/Search":
             selected_col = st.selectbox("🔎 Select Column to Search/Filter", df.columns)
             search_value = st.text_input("🔍 Enter value to search")
 
@@ -112,6 +166,7 @@ if uploaded_file:
                 st.write(f"📌 **Filtered Results for '{search_value}' in {selected_col}:**")
                 st.dataframe(filtered_df)
 
+        # **Replace Values Handling**
         elif inconsistency_option == "Replace Values":
             selected_col = st.selectbox("🛠 Select Column to Replace Values", df.columns)
             old_value = st.text_input("✏️ Enter value to replace")
@@ -123,9 +178,18 @@ if uploaded_file:
                 st.write("📌 Updated Dataset Preview:")
                 st.dataframe(df.head())
 
+        # Store Updated DataFrame
+        st.session_state.df = df
+
+        
+
+        st.subheader("📊 Updated Data Preview")
+        st.dataframe(df)
+        
+        
+
         # Store in session state to keep modifications
         st.session_state["df_processed"] = df
-
 
     # **📊 EDA Section (Only Runs if `preprocess == "EDA"`)**
     elif preprocess == "EDA":
@@ -141,8 +205,11 @@ if uploaded_file:
 
         # **Univariate Analysis**
         if analysis_type == "Univariate Analysis":
-            selected_column = st.selectbox("📌 Select Column", df.columns, key="univar_col")
-            chart_option = st.selectbox("📊 Select Chart Type", ["Histogram", "Box Plot", "Bar Chart"], key="univar_chart")
+            col1, col2 = st.columns(2)
+            with col1:
+                selected_column = st.selectbox("📌 Select Column", df.columns, key="univar_col")
+            with col2:
+                chart_option = st.selectbox("📊 Select Chart Type", ["Histogram", "Box Plot", "Bar Chart"], key="univar_chart")
 
             if st.button("➕ Add Univariate Plot", key="add_univar"):
                 st.session_state.eda_plots.append(("Univariate", selected_column, chart_option))
@@ -160,26 +227,33 @@ if uploaded_file:
                 st.session_state.eda_plots.append(("Multivariate", x_axis, y_axis, multi_chart_option))
 
         # **Step 3: Display All Selected Plots**
-        for idx, (analysis, col1, col2, chart) in enumerate(st.session_state.eda_plots):
-            st.subheader(f"📊 {chart} for {col1} vs {col2}")
-
+        for idx, plot in enumerate(st.session_state.eda_plots):
             fig, ax = plt.subplots()
 
-            if analysis == "Univariate":
-                if chart == "Histogram":
-                    sns.histplot(df[col1], kde=True, ax=ax)
-                elif chart == "Box Plot":
-                    sns.boxplot(x=df[col1], ax=ax)
-                elif chart == "Bar Chart":
-                    df[col1].value_counts().plot(kind="bar", ax=ax)
+            # Handle Univariate Analysis
+            if plot[0] == "Univariate":
+                analysis, col, chart = plot  # Unpack only 3 elements
+                st.subheader(f"📊 {chart} for {col}")
 
-            elif analysis == "Multivariate":
+                if chart == "Histogram":
+                    sns.histplot(df[col], kde=True, ax=ax)
+                elif chart == "Box Plot":
+                    sns.boxplot(x=df[col], ax=ax)
+                elif chart == "Bar Chart":
+                    df[col].value_counts().plot(kind="bar", ax=ax)
+
+            # Handle Multivariate Analysis
+            elif plot[0] == "Multivariate":
+                analysis, x_col, y_col, chart = plot  # Unpack 4 elements
+                st.subheader(f"📊 {chart} for {x_col} vs {y_col}")
+
                 if chart == "Scatter Plot":
-                    sns.scatterplot(x=df[col1], y=df[col2], ax=ax)
+                    sns.scatterplot(x=df[x_col], y=df[y_col], ax=ax)
                 elif chart == "Line Chart":
-                    sns.lineplot(x=df[col1], y=df[col2], ax=ax)
+                    sns.lineplot(x=df[x_col], y=df[y_col], ax=ax)
 
             st.pyplot(fig)
+
 
         # **Refresh Button**
         if st.button("🔄 Refresh EDA"):
