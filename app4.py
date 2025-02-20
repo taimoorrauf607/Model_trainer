@@ -5,13 +5,13 @@ import io,re, sys  # For file handling
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 import matplotlib.pyplot as plt
 import seaborn as sns
-from catboost import CatBoostRegressor, Pool
+from catboost import CatBoostRegressor, Pool, CatBoostClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
-from sklearn.ensemble import StackingRegressor
-from sklearn.linear_model import LinearRegression
-from sklearn.tree import DecisionTreeRegressor
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, accuracy_score
+from sklearn.ensemble import StackingRegressor, StackingClassifier
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
+from sklearn.ensemble import RandomForestRegressor,RandomForestClassifier
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 
 # Title
@@ -23,7 +23,6 @@ uploaded_file = st.file_uploader("Upload your dataset (CSV)", type=["csv"])
 
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
-    st.title("Welcome to Data Preprocessing")
 
     if "df_processed" not in st.session_state:
         st.session_state["df_processed"] = df.copy()
@@ -39,6 +38,7 @@ if uploaded_file:
 
     # 📊 DATA OVERVIEW
     if preprocess == "📊 Data Overview":
+        st.title("Welcome to Data Preprocessing")
         st.header("📊 Dataset Overview")
         st.write("📌 **Shape:**", df.shape)
 
@@ -71,6 +71,7 @@ if uploaded_file:
 
         # ⚙️ HANDLE MISSING VALUES
     elif preprocess == "⚙️ Handle Missing Values":
+        st.title("Welcome to Data Preprocessing")
         df_missing = df.copy()
         for col in df_missing.columns:
             if df_missing[col].isnull().sum() > 0:
@@ -123,6 +124,7 @@ if uploaded_file:
 
        # 🔎 INCONSISTENCY HANDLING
     elif preprocess == "🔎 Inconsistency":
+        st.title("Welcome to Data Preprocessing")
         # Drop Unnecessary Columns
         st.header("🗑️ Drop Unnecessary Columns")
         columns_to_drop = st.multiselect("Select columns to drop", df.columns)
@@ -234,74 +236,29 @@ if uploaded_file:
 #         st.session_state["df_processed"] = df
 
     elif preprocess == "custom code":
+        st.title("Welcome to Data Preprocessing")
         st.dataframe(df)
         st.subheader("🧑‍💻 Write Your Custom Data Cleaning Code")
-
-        # 📝 Code Template
         code_template = """
-    # Example:
-    # df['column_name'] = df['column_name'].str.strip()
-    # df['date_column'] = pd.to_datetime(df['date_column'], errors='coerce')
-    # print(df['name'].value_counts())  # Example to display output like Jupyter Notebook
-    """
-
-        # 📄 Text Area for Custom Code Input
+# Example:
+# df['column_name'] = df['column_name'].str.strip()
+# df['date_column'] = pd.to_datetime(df['date_column'], errors='coerce')
+"""
         custom_code = st.text_area("Write your Python code here:", code_template, height=150)
-
-        # 🎛️ Output Display Options
-        output_type = st.radio(
-            "Select Output Type:",
-            ("Text Output", "DataFrame Preview"),
-            index=1
-        )
-
-        # 🚀 Run Code Button
-        if st.button("🚀 Run Code"):
+        if st.button("🚀 Run Custom Code"):
             try:
-                # 🔄 Capture Standard Output
-                output_buffer = io.StringIO()
-                sys.stdout = output_buffer  # Redirect stdout to the buffer
-
-                # 🔄 Execute Code with Proper DataFrame Reference
-                local_env = {"df": df, "pd": pd}
-
-                # 🧮 Execute Custom Code
-                exec(custom_code, {}, local_env)
-
-                # ✅ Success Message
+                exec(custom_code, {"df": df, "pd": pd})
                 st.success("✅ Custom code executed successfully!")
-
-                # 📄 Display Output Based on Selected Option
-                if output_type == "Text Output":
-                    st.write("### 📊 Code Output:")
-                    output_text = output_buffer.getvalue()
-                    if output_text:
-                        st.text(output_text)
-                    else:
-                        st.info("ℹ️ No text output to display.")
-                
-                elif output_type == "DataFrame Preview":
-                    st.write("### 📑 Updated DataFrame Preview:")
-                    if "df" in local_env:
-                        df = local_env["df"]
-                        st.dataframe(df.head())
-                    else:
-                        st.warning("⚠️ DataFrame not modified or not found in custom code.")
-
+                st.dataframe(df.head())
             except Exception as e:
                 st.error(f"❌ Error executing custom code: {e}")
 
-            finally:
-                sys.stdout = sys.__stdout__  # Reset stdout to default
-
-        # 💾 Store Updated DataFrame in Session State
         st.session_state.df = df
         st.session_state["df_processed"] = df
 
-
-
     # **📊 EDA Section (Only Runs if `preprocess == "EDA"`)**
     elif preprocess == "📈 EDA":
+        st.title("Welcome to Data Preprocessing")
        # **📊 EDA Section (Only Runs if `preprocess == "EDA"`)**
         st.header("📊 Exploratory Data Analysis")
 
@@ -400,6 +357,7 @@ if uploaded_file:
 
         # FEATURE ENGINEERING
     elif preprocess == "⚙️ Feature Eng":
+        st.title("Welcome to Data Preprocessing")
         df_feature_eng = st.session_state.get("df_processed", df).copy()
 
         # Select Features to Encode
@@ -465,87 +423,160 @@ if uploaded_file:
         st.session_state["df_feature_eng"] = df_feature_eng
 
 
-    elif preprocess=='🤖 Train Model only':
-         # # Selecting Features and Target
+    elif preprocess == '🤖 Train Model only':
+        st.header("🏋️‍♂️ Train Machine Learning Model")
+
+        # 1️⃣ Selecting Features and Target
         target_column = st.selectbox("🎯 Select Target Column", df.columns)
-        feature_columns = st.multiselect("📊 Select Feature Columns", df.columns, default=[col for col in df.columns if col != target_column])
+        feature_columns = st.multiselect("📊 Select Feature Columns", 
+                                        df.columns, 
+                                        default=[col for col in df.columns if col != target_column])
 
         if feature_columns and target_column:
             X = df[feature_columns]
             y = df[target_column]
-        # Split dataset
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        # Sidebar: Choose Model Type
-        model_type = st.sidebar.radio("Select Model Type", ("Regression", "Classification"))
+            # 🔄 Data Splitting
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+            st.success("✅ Data split into training and testing sets successfully!")
 
-        if model_type == "Regression":
-            regressor_choice = st.sidebar.selectbox("Choose Regressor", ("CatBoost", "Stacking"))
+            # 2️⃣ Model Selection in Sidebar
+            st.sidebar.header("⚙️ Model Selection")
+            model_type = st.sidebar.radio("Select Model Type", ("Regression", "Classification"))
 
-            if regressor_choice == "CatBoost":
-                # Sidebar: CatBoost Parameters
-                st.sidebar.header("⚙️ CatBoost Parameters")
-                iterations = st.sidebar.number_input("Iterations", value=1000, step=10, format="%d")
-                learning_rate = st.sidebar.number_input("Learning Rate", value=0.1, format="%.6f")
-                l2_leaf_reg = st.sidebar.number_input("L2 Leaf Regularization", value=3.5, format="%.6f")
-                depth = st.sidebar.number_input("Depth", 1, 16, 6, 1)
+            # 📈 Regression Models
+            if model_type == "Regression":
+                regressor_choice = st.sidebar.selectbox("Choose Regressor", ("CatBoost", "Stacking"))
 
-                if st.button("🚀 Train Model"):
-                    model = CatBoostRegressor(
-                        iterations=iterations,
-                        learning_rate=learning_rate,
-                        depth=depth,
-                        l2_leaf_reg=l2_leaf_reg,
-                        verbose=0
-                    )
-                    model.fit(X_train, y_train, early_stopping_rounds=50, verbose=False)
+                # 🌟 CatBoost Regressor
+                if regressor_choice == "CatBoost":
+                    st.sidebar.subheader("📊 CatBoost Parameters")
+                    iterations = st.sidebar.number_input("Iterations", value=1000, step=10, format="%d")
+                    learning_rate = st.sidebar.number_input("Learning Rate", value=0.1, format="%.6f")
+                    l2_leaf_reg = st.sidebar.number_input("L2 Leaf Regularization", value=3.5, format="%.6f")
+                    depth = st.sidebar.number_input("Depth", 1, 16, 6, 1)
 
-                    y_pred = model.predict(X_test)
-                    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-                    st.success(f"✅ Model Trained Successfully! RMSE Score: {rmse:.6f}")
-                    st.session_state["trained_model"] = model
-                    st.session_state["feature_columns"] = feature_columns
+                    # ✅ Train Model Button with Unique Key
+                    if st.button("🚀Train Model", key="train_catboost"):
+                        try:
+                            model = CatBoostRegressor(
+                                iterations=iterations,
+                                learning_rate=learning_rate,
+                                depth=depth,
+                                l2_leaf_reg=l2_leaf_reg,
+                                verbose=0
+                            )
+                            model.fit(X_train, y_train, early_stopping_rounds=50, verbose=False)
+                            y_pred = model.predict(X_test)
+                            rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+                            st.success(f"✅ Model Trained Successfully! RMSE Score: {rmse:.6f}")
+                            st.session_state["trained_model"] = model
+                            st.session_state["feature_columns"] = feature_columns
+                        except Exception as e:
+                            st.error(f"❌ Error training CatBoost model: {e}")
 
-            elif regressor_choice == "Stacking":
-                base_learners = [
-                    ("lr", LinearRegression()),
-                    ("dt", DecisionTreeRegressor()),
-                    ("rf", RandomForestRegressor())
-                ]
-                meta_learner = LinearRegression()
-                model = StackingRegressor(estimators=base_learners, final_estimator=meta_learner)
+                # 🔗 Stacking Regressor
+                elif regressor_choice == "Stacking":
+                    base_learners = [
+                        ("lr", LinearRegression()),
+                        ("dt", DecisionTreeRegressor()),
+                        ("rf", RandomForestRegressor())
+                    ]
+                    meta_learner = LinearRegression()
+                    model = StackingRegressor(estimators=base_learners, final_estimator=meta_learner)
 
-                if st.button("🚀 Train Model"):
-                    model.fit(X_train, y_train)
-                    y_pred = model.predict(X_test)
-                    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-                    st.success(f"✅ Model Trained Successfully! RMSE Score: {rmse:.6f}")
-                    st.session_state["trained_model"] = model
-                    st.session_state["feature_columns"] = feature_columns
+                    if st.button("🚀Train Model", key="train_stacking"):
+                        try:
+                            model.fit(X_train, y_train)
+                            y_pred = model.predict(X_test)
+                            rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+                            st.success(f"✅ Model Trained Successfully! RMSE Score: {rmse:.6f}")
+                            st.session_state["trained_model"] = model
+                            st.session_state["feature_columns"] = feature_columns
+                        except Exception as e:
+                            st.error(f"❌ Error training Stacking model: {e}")
+            
+            # 📊 Classification Models
+            elif model_type == "Classification":
+                classifier_choice = st.sidebar.selectbox("Choose Classifier", ("CatBoost", "Stacking"))
 
-        # Upload Test Dataset for Prediction
-        st.header("2️⃣ Upload Test Dataset for Prediction")
+                # 🌟 CatBoost Classifier
+                if classifier_choice == "CatBoost":
+                    st.sidebar.subheader("📊 CatBoost Parameters")
+                    iterations = st.sidebar.number_input("Iterations", value=1000, step=10, format="%d")
+                    learning_rate = st.sidebar.number_input("Learning Rate", value=0.1, format="%.6f")
+                    l2_leaf_reg = st.sidebar.number_input("L2 Leaf Regularization", value=3.5, format="%.6f")
+                    depth = st.sidebar.number_input("Depth", 1, 16, 6, 1)
+
+                    if st.button("🚀Train Model", key="train_catboost_class"):
+                        try:
+                            model = CatBoostClassifier(
+                                iterations=iterations,
+                                learning_rate=learning_rate,
+                                depth=depth,
+                                l2_leaf_reg=l2_leaf_reg,
+                                verbose=0
+                            )
+                            model.fit(X_train, y_train, early_stopping_rounds=50, verbose=False)
+                            y_pred = model.predict(X_test)
+                            accuracy = accuracy_score(y_test, y_pred)
+                            st.success(f"✅ Model Trained Successfully! Accuracy: {accuracy:.6f}")
+                            st.session_state["trained_model"] = model
+                            st.session_state["feature_columns"] = feature_columns
+                        except Exception as e:
+                            st.error(f"❌ Error training CatBoost classifier: {e}")
+
+                # 🔗 Stacking Classifier
+                elif classifier_choice == "Stacking":
+                    base_classifiers = [
+                        ("lr", LogisticRegression()),
+                        ("dt", DecisionTreeClassifier()),
+                        ("rf", RandomForestClassifier())
+                    ]
+                    meta_classifier = LogisticRegression()
+                    model = StackingClassifier(estimators=base_classifiers, final_estimator=meta_classifier)
+
+                    if st.button("🚀Train Model", key="train_stacking_class"):
+                        try:
+                            model.fit(X_train, y_train)
+                            y_pred = model.predict(X_test)
+                            accuracy = accuracy_score(y_test, y_pred)
+                            st.success(f"✅ Model Trained Successfully! Accuracy: {accuracy:.6f}")
+                            st.session_state["trained_model"] = model
+                            st.session_state["feature_columns"] = feature_columns
+                        except Exception as e:
+                            st.error(f"❌ Error training Stacking classifier: {e}")
+
+
+        # 3️⃣ Upload Test Dataset for Prediction
+        st.header("📤 Upload Test Dataset for Prediction")
         test_file = st.file_uploader("Upload your test dataset (CSV) for predictions", type=["csv"])
 
         if test_file and "trained_model" in st.session_state:
             test_df = pd.read_csv(test_file)
-            st.write("📌 Test Dataset Preview:")
+            st.write("📊 Test Dataset Preview:")
             st.dataframe(test_df.head())
 
             missing_cols = [col for col in st.session_state["feature_columns"] if col not in test_df.columns]
             if missing_cols:
                 st.error(f"❌ Missing columns in test file: {missing_cols}")
             else:
-                if st.button("📊 Make Predictions"):
-                    predictions = st.session_state["trained_model"].predict(test_df[st.session_state["feature_columns"]])
-                    submission_df = pd.DataFrame({
-                        "id": range(300000, 300000 + len(test_df)),
-                        "submission": predictions
-                    })
+                if st.button("📊 Make Predictions", key="make_predictions"):
+                    try:
+                        predictions = st.session_state["trained_model"].predict(test_df[st.session_state["feature_columns"]])
+                        submission_df = pd.DataFrame({
+                            "id": range(300000, 300000 + len(test_df)),
+                            "submission": predictions
+                        })
 
-                    st.success("✅ Predictions made successfully!")
-                    st.write("📌 Preview of Submission File:")
-                    st.dataframe(submission_df.head())
+                        st.success("✅ Predictions made successfully!")
+                        st.write("📄 Preview of Submission File:")
+                        st.dataframe(submission_df.head())
 
-                    csv = submission_df.to_csv(index=False).encode('utf-8')
-                    st.download_button("📥 Download Submission File", data=csv, file_name="submission.csv", mime="text/csv")
+                        csv = submission_df.to_csv(index=False).encode('utf-8')
+                        st.download_button("📥 Download Submission File", 
+                                        data=csv, 
+                                        file_name="submission.csv", 
+                                        mime="text/csv")
+                    except Exception as e:
+                        st.error(f"❌ Error making predictions: {e}")
