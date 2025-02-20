@@ -30,7 +30,8 @@ if uploaded_file:
     df = st.session_state["df_processed"]
 
     # Sidebar - Preprocessing Steps
-    preprocess_options = ["📊 Data Overview", "Inconsistency", "EDA", "Feature Eng", "Train Model only"]
+    preprocess_options = ["📊 Data Overview","🔎 Inconsistency", "📈 EDA", "⚙️ Feature Eng", "🤖 Train Model only"]
+
     if df.isnull().sum().sum() > 0:
         preprocess_options.insert(1, "⚙️ Handle Missing Values")
 
@@ -76,7 +77,7 @@ if uploaded_file:
                 st.subheader(f"⚠️ Handling Missing Values in **{col}**")
                 # Categorical Columns
                 if df_missing[col].dtype == 'object':  
-                    option = st.selectbox(f"Select option to fill:", ("Specific Value", "Drop"), key=col)
+                    option = st.selectbox(f"Select option to Fill:", ("Specific Value", "Drop"), key=col)
                     if option == "Specific Value":
                         value = st.text_input(f"Enter specific value for {col}", key=f"value_{col}")
                         if value and st.button(f"✅ Confirm", key=f"confirm_{col}"):
@@ -89,7 +90,7 @@ if uploaded_file:
 
                 # Numerical Columns
                 else:  
-                    option = st.selectbox(f"Select option to fill:", 
+                    option = st.selectbox(f"Select option to Fill:", 
                                         ("Mean", "Median", "Mode", "Interquartile Range (IQR)","Specific Value"), key=col)
                     if option == "Specific Value":
                         value = st.text_input(f"Enter specific value for {col}", key=f"num_value_{col}")
@@ -121,7 +122,7 @@ if uploaded_file:
 
 
        # 🔎 INCONSISTENCY HANDLING
-    elif preprocess == "Inconsistency":
+    elif preprocess == "🔎 Inconsistency":
         # Drop Unnecessary Columns
         st.header("🗑️ Drop Unnecessary Columns")
         columns_to_drop = st.multiselect("Select columns to drop", df.columns)
@@ -208,29 +209,29 @@ if uploaded_file:
                 st.dataframe(df)
                 st.write("📌 Updated Dataset Preview:")
 
-        elif inconsistency_option == "Custom Code":
-            st.dataframe(df)
-            st.subheader("🧑‍💻 Write Your Custom Data Cleaning Code")
-            code_template = """
-# Example:
-# df['column_name'] = df['column_name'].str.strip()
-# df['date_column'] = pd.to_datetime(df['date_column'], errors='coerce')
-"""
-            custom_code = st.text_area("Write your Python code here:", code_template, height=150)
-            if st.button("🚀 Run Custom Code"):
-                try:
-                    exec(custom_code, {"df": df, "pd": pd})
-                    st.success("✅ Custom code executed successfully!")
-                    st.dataframe(df.head())
-                except Exception as e:
-                    st.error(f"❌ Error executing custom code: {e}")
+#         elif inconsistency_option == "Custom Code":
+#             st.dataframe(df)
+#             st.subheader("🧑‍💻 Write Your Custom Data Cleaning Code")
+#             code_template = """
+# # Example:
+# # df['column_name'] = df['column_name'].str.strip()
+# # df['date_column'] = pd.to_datetime(df['date_column'], errors='coerce')
+# """
+#             custom_code = st.text_area("Write your Python code here:", code_template, height=150)
+#             if st.button("🚀 Run Custom Code"):
+#                 try:
+#                     exec(custom_code, {"df": df, "pd": pd})
+#                     st.success("✅ Custom code executed successfully!")
+#                     st.dataframe(df.head())
+#                 except Exception as e:
+#                     st.error(f"❌ Error executing custom code: {e}")
 
-        st.session_state.df = df
-        st.session_state["df_processed"] = df
+#         st.session_state.df = df
+#         st.session_state["df_processed"] = df
 
 
     # **📊 EDA Section (Only Runs if `preprocess == "EDA"`)**
-    elif preprocess == "EDA":
+    elif preprocess == "📈 EDA":
        # **📊 EDA Section (Only Runs if `preprocess == "EDA"`)**
         st.header("📊 Exploratory Data Analysis")
 
@@ -327,58 +328,47 @@ if uploaded_file:
             st.session_state.eda_plots = []  # Clear session state
             st.rerun()
 
-    # FEATURE ENGINEERING
-    elif preprocess == "Feature Eng":
+        # FEATURE ENGINEERING
+    elif preprocess == "⚙️ Feature Eng":
         df_feature_eng = st.session_state.get("df_processed", df).copy()
 
-        # Select Features & Target
-        target_column = st.selectbox("🎯 Select Target Column", df_feature_eng.columns)
-        feature_columns = st.multiselect("📊 Select Feature Columns", df_feature_eng.columns, 
-                                         default=[col for col in df_feature_eng.columns if col != target_column])
-
-        if feature_columns and target_column:
-            X = df_feature_eng[feature_columns].copy()
-            y = df_feature_eng[target_column]
-
-            # Identify categorical features
-            cat_features = [col for col in feature_columns if df_feature_eng[col].dtype == 'object']
-
-            # Encoding Categorical Features
-            st.header("🛠️ Encode Categorical Features")
+        # Select Features to Encode
+        st.header("🛠️ Encode Categorical Features")
+        cat_features = st.multiselect("📊 Select Features to Encode", 
+                                      [col for col in df_feature_eng.columns if df_feature_eng[col].dtype == 'object'])
+        
+        # Encoding Categorical Features
+        if cat_features:
             encoding_method = st.selectbox("Select Encoding Method", ("Label Encoding", "One-Hot Encoding"))
+            encode_button = st.button("✅Confirm",key=f"{cat_features} is encoded✅")
+            if encode_button:
+                if encoding_method == "Label Encoding":
+                    label_encoders = {}
+                    for col in cat_features:
+                        le = LabelEncoder()
+                        df_feature_eng[col] = le.fit_transform(df_feature_eng[col].astype(str))
+                        label_encoders[col] = le
 
-            if encoding_method == "Label Encoding":
-                label_encoders = {}
-                for col in cat_features:
-                    le = LabelEncoder()
-                    X[col] = le.fit_transform(X[col].astype(str))
-                    label_encoders[col] = le
+                elif encoding_method == "One-Hot Encoding":
+                    df_feature_eng = pd.get_dummies(df_feature_eng, columns=cat_features).replace({True:1,False:0})
 
-            elif encoding_method == "One-Hot Encoding":
-                X = pd.get_dummies(X, columns=cat_features).replace({True:1,False:0})
-
-            st.success("✅ Categorical features encoded successfully!")
-            st.write("📌 Updated Feature Set After Encoding:")
-            st.dataframe(X.head())
+                st.success("✅ Categorical features encoded successfully!")
+                st.write("📌 Updated Dataset After Encoding:")
+                st.dataframe(df_feature_eng.head())
 
         # Feature Scaling
         st.header("📏 Feature Scaling")
-        scale_features = st.multiselect("Select Features to Scale", X.columns)
-        if scale_features:
-            scaler = StandardScaler()
-            X[scale_features] = scaler.fit_transform(X[scale_features])
-            st.write(f"✅ Scaled Features: {', '.join(scale_features)}")
+        scale_features = st.multiselect("Select Features to Scale", df_feature_eng.columns)
+        scale_button = st.button("✅Confirm",key=f"{scale_features} is scaled✅")
+        if scale_button:
+            if scale_features:
+                scaler = StandardScaler()
+                df_feature_eng[scale_features] = scaler.fit_transform(df_feature_eng[scale_features])
+                st.write(f"✅ Scaled Features: {', '.join(scale_features)}")
 
-            st.success("✅ Feature scaling applied successfully!")
-            st.write("📌 Updated Feature Set After Feature Scaling:")
-            st.dataframe(X.head())
-
-        # Merge Processed Features
-        df_feature_eng = df_feature_eng.drop(columns=feature_columns, errors='ignore')
-        df_feature_eng = pd.concat([df_feature_eng, X], axis=1)
-
-        st.write("📌 Updated Dataset After Feature Engineering:")
-        st.dataframe(df_feature_eng.head())
+                st.success("✅ Feature scaling applied successfully!")
+                st.write("📌 Updated Dataset After Feature Scaling:")
+                st.dataframe(df_feature_eng.head())
 
         # Store df_feature_eng in session_state for download
         st.session_state["df_feature_eng"] = df_feature_eng
@@ -401,7 +391,8 @@ if uploaded_file:
         st.success("✅ Processed dataset is ready for download!")
 
 
-    elif preprocess=='Train Model only':
+
+    elif preprocess=='🤖 Train Model only':
          # # Selecting Features and Target
         target_column = st.selectbox("🎯 Select Target Column", df.columns)
         feature_columns = st.multiselect("📊 Select Feature Columns", df.columns, default=[col for col in df.columns if col != target_column])
