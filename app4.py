@@ -106,7 +106,7 @@ if uploaded_file:
         # Store in session state to keep modifications
         st.session_state["df_processed"] = df_missing
 
-    # 🔎 INCONSISTENCY HANDLING
+       # 🔎 INCONSISTENCY HANDLING
     elif preprocess == "Inconsistency":
         # Drop Unnecessary Columns
         st.header("🗑️ Drop Unnecessary Columns")
@@ -118,41 +118,29 @@ if uploaded_file:
                 st.success(f"✅ Dropped columns: {', '.join(columns_to_drop)}")
                 st.write("📌 Updated Dataset After Dropping Columns:")
                 st.dataframe(df.head())
-            # **Choose Inconsistency Handling Method**
-        inconsistency_option = st.radio("📌 Choose Inconsistency Handling:", ("Data Type Conversion", "Filter/Search", "Replace Values",'remove char'))
 
-        # **Data Type Conversion Handling**
+        # Choose Inconsistency Handling Method
+        inconsistency_option = st.radio("📌 Choose Inconsistency Handling:", ("Data Type Conversion", "Filter/Search", "Replace Values", "Remove Char", "Custom Code"))
+
+        # Data Type Conversion Handling
         if inconsistency_option == "Data Type Conversion":
             with st.form("data_type_conversion_form"):
-                # **Column Selection**
                 column_to_convert = st.selectbox("📌 Select Column to Change Data Type", df.columns, key="inconsistency_col")
-
-                # **Data Type Selection**
                 new_dtype = st.selectbox("🔄 Convert Data Type To", ["int", "float", "string", "date"], key="dtype_selection")
-
-                # **Date Component Selection (Only when 'date' is selected)**
                 date_component = None
                 if new_dtype == "date":
                     date_component = st.radio("📌 Extract Date Component", ["Full Date", "Year", "Month", "Day"], horizontal=True, key="date_component")
-
-                # **Submit Button**
                 submit_button = st.form_submit_button("✅ Convert Data Type")
 
-            # **Process conversion after submit button is clicked**
             if submit_button:
                 if new_dtype == "int":
                     df[column_to_convert] = pd.to_numeric(df[column_to_convert], errors="coerce").astype("Int64")
-
                 elif new_dtype == "float":
                     df[column_to_convert] = pd.to_numeric(df[column_to_convert], errors="coerce").astype("float")
-
                 elif new_dtype == "string":
                     df[column_to_convert] = df[column_to_convert].astype("string")
-
                 elif new_dtype == "date":
                     df[column_to_convert] = pd.to_datetime(df[column_to_convert], errors="coerce")
-
-                    # **Extract Date Components if selected**
                     if date_component == "Year":
                         df[column_to_convert] = df[column_to_convert].dt.year
                     elif date_component == "Month":
@@ -161,8 +149,7 @@ if uploaded_file:
                         df[column_to_convert] = df[column_to_convert].dt.day
 
                 st.success(f"✅ Column **{column_to_convert}** converted to **{new_dtype}**")
-                # **Display Updated Data**
-                col1,col2 = st.columns(2)
+                col1, col2 = st.columns(2)
                 with col1:
                     st.subheader("📌 Updated Data Types")
                     st.write(df.dtypes)
@@ -170,20 +157,17 @@ if uploaded_file:
                     st.subheader("📊 Updated Data Preview")
                     st.dataframe(df)
 
-        # **Filter/Search Handling**
         elif inconsistency_option == "Filter/Search":
             col1, col2 = st.columns(2)
             with col1:
                 selected_col = st.selectbox("🔎 Select Column to Search/Filter", df.columns)
             with col2:           
                 search_value = st.text_input("🔍 Enter value to search")
-
             if search_value:
                 filtered_df = df[df[selected_col].astype(str).str.contains(search_value, case=False, na=False)]
                 st.write(f"📌 **Filtered Results for '{search_value}' in {selected_col}:**")
                 st.dataframe(filtered_df)
 
-        # **Replace Values Handling**
         elif inconsistency_option == "Replace Values":
             selected_col = st.selectbox("🛠 Select Column to Replace Values", df.columns)
             col1, col2 = st.columns(2)
@@ -191,13 +175,12 @@ if uploaded_file:
                 old_value = st.text_input("✏️ Enter value to replace")
             with col2:
                 new_value = st.text_input("✅ Enter new value")
-            
             if old_value and new_value:
                 df[selected_col] = df[selected_col].replace(old_value, new_value)
                 st.success(f"✅ '{old_value}' replaced with '{new_value}' in column {selected_col}")
-                # st.write("📌 Updated Dataset Preview:")
                 st.dataframe(df.head())
-        elif inconsistency_option =='remove char':
+
+        elif inconsistency_option == "Remove Char":
             st.dataframe(df)
             selected_col = st.selectbox("🛠 Select Column to remove Values", df.columns)
             col1, col2 = st.columns(2)
@@ -206,17 +189,31 @@ if uploaded_file:
             with col2:
                 exp = st.text_input("Enter Regular expression:")
             if old_vl or exp:
-                df[selected_col] = df[selected_col].replace(old_vl or exp,'',regex=True)
-                st.success(f"✅ '{old_vl}' remove from column {selected_col}")
+                df[selected_col] = df[selected_col].replace(old_vl or exp, '', regex=True)
+                st.success(f"✅ '{old_vl}' removed from column {selected_col}")
                 st.dataframe(df)
                 st.write("📌 Updated Dataset Preview:")
 
+        elif inconsistency_option == "Custom Code":
+            st.dataframe(df)
+            st.subheader("🧑‍💻 Write Your Custom Data Cleaning Code")
+            code_template = """
+# Example:
+# df['column_name'] = df['column_name'].str.strip()
+# df['date_column'] = pd.to_datetime(df['date_column'], errors='coerce')
+"""
+            custom_code = st.text_area("Write your Python code here:", code_template, height=150)
+            if st.button("🚀 Run Custom Code"):
+                try:
+                    exec(custom_code, {"df": df, "pd": pd})
+                    st.success("✅ Custom code executed successfully!")
+                    st.dataframe(df.head())
+                except Exception as e:
+                    st.error(f"❌ Error executing custom code: {e}")
 
-        # Store Updated DataFrame
         st.session_state.df = df
-
-        # Store in session state to keep modifications
         st.session_state["df_processed"] = df
+
 
     # **📊 EDA Section (Only Runs if `preprocess == "EDA"`)**
     elif preprocess == "EDA":
