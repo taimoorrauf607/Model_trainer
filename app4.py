@@ -76,10 +76,10 @@ if uploaded_file:
                 st.subheader(f"⚠️ Handling Missing Values in **{col}**")
                 # Categorical Columns
                 if df_missing[col].dtype == 'object':  
-                    option = st.selectbox(f"Fill NaN values in {col}", ("Specific Value", "Drop"), key=col)
+                    option = st.selectbox(f"Select option to fill:", ("Specific Value", "Drop"), key=col)
                     if option == "Specific Value":
                         value = st.text_input(f"Enter specific value for {col}", key=f"value_{col}")
-                        if value and st.button(f"✅ Confirm Fill NaN in {col}", key=f"confirm_{col}"):
+                        if value and st.button(f"✅ Confirm", key=f"confirm_{col}"):
                             df_missing[col].fillna(value, inplace=True)
                             st.success(f"✅ Filled NaN values in **{col}** with **{value}**")
                     elif option == "Drop":
@@ -89,14 +89,14 @@ if uploaded_file:
 
                 # Numerical Columns
                 else:  
-                    option = st.selectbox(f"Fill NaN values in {col}", 
+                    option = st.selectbox(f"Select option to fill:", 
                                         ("Mean", "Median", "Mode", "Interquartile Range (IQR)","Specific Value"), key=col)
                     if option == "Specific Value":
                         value = st.text_input(f"Enter specific value for {col}", key=f"num_value_{col}")
-                        if value and st.button(f"✅ Confirm Fill NaN in {col}", key=f"confirm_num_value_{col}"):
+                        if value and st.button(f"✅ Confirm", key=f"confirm_num_value_{col}"):
                             df_missing[col].fillna(float(value), inplace=True)
                             st.success(f"✅ Filled NaN values in **{col}** with **{value}**")
-                    elif st.button(f"✅ Confirm Fill NaN in {col}", key=f"confirm_num_{col}"):
+                    elif st.button(f"✅ Confirm", key=f"confirm_num_{col}"):
                         if option == "Mean":
                             df_missing[col].fillna(df_missing[col].mean(), inplace=True)
                             st.success(f"✅ Filled NaN values in **{col}** with Mean")
