@@ -443,23 +443,26 @@ if uploaded_file:
         # Store df_feature_eng in session_state for download
         st.session_state["df_feature_eng"] = df_feature_eng
 
-    # 📥 DOWNLOAD PROCESSED DATASET
-    if "df_feature_eng" in st.session_state:
-        df_to_download = st.session_state["df_feature_eng"]
-        csv_buffer = io.StringIO()
-        df_to_download.to_csv(csv_buffer, index=False)
-        csv_data = csv_buffer.getvalue()
+        # 📥 DOWNLOAD PROCESSED DATASET
+        if "df_feature_eng" in st.session_state:
+            df_to_download = st.session_state["df_feature_eng"]
+            csv_buffer = io.StringIO()
+            df_to_download.to_csv(csv_buffer, index=False)
+            csv_data = csv_buffer.getvalue()
 
-        st.header("📥 Download Processed Dataset")
-        st.download_button(
-            label="📥 Download CSV",
-            data=csv_data,
-            file_name="processed_dataset.csv",
-            mime="text/csv"
-        )
+            st.header("📥 Download Processed Dataset")
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv_data,
+                file_name="processed_dataset.csv",
+                mime="text/csv"
+            )
 
-        st.success("✅ Processed dataset is ready for download!")
-
+            st.success("✅ Processed dataset is ready for download!")
+         # 💾 Store Updated DataFrame in Session State
+        st.session_state.df = df
+        # Store df_feature_eng in session_state for download
+        st.session_state["df_feature_eng"] = df_feature_eng
 
 
     elif preprocess=='🤖 Train Model only':
