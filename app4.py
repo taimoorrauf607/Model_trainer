@@ -422,7 +422,6 @@ if uploaded_file:
         # Store df_feature_eng in session_state for download
         st.session_state["df_feature_eng"] = df_feature_eng
 
-
     elif preprocess == '🤖 Train Model only':
         st.header("🏋️‍♂️ Train Machine Learning Model")
 
@@ -446,8 +445,6 @@ if uploaded_file:
                 st.write('Train Shape:',X_train.shape)
             with col2:
                 st.write('Test Shape:',X_test.shape)
-            
-
 
             # 2️⃣ Model Selection in Sidebar
             st.sidebar.header("⚙️ Model Selection")
