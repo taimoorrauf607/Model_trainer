@@ -299,7 +299,6 @@ if uploaded_file:
         st.session_state["df_processed"] = df
 
 
-
     # **📊 EDA Section (Only Runs if `preprocess == "EDA"`)**
     elif preprocess == "📈 EDA":
        # **📊 EDA Section (Only Runs if `preprocess == "EDA"`)**
