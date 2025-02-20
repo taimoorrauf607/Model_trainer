@@ -435,10 +435,19 @@ if uploaded_file:
         if feature_columns and target_column:
             X = df[feature_columns]
             y = df[target_column]
+            # 📏 Split Ratio Selection
+            test_size = st.slider('🔄 Test Size Split', min_value=0.05, max_value=0.9, value=0.2, step=0.05)
 
             # 🔄 Data Splitting
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-            st.success("✅ Data split into training and testing sets successfully!")
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+            st.success(f"✅ Data split into training ({(1 - test_size) * 100:.0f}%) and testing ({test_size * 100:.0f}%) sets successfully!")
+            col1,col2= st.columns(2)
+            with col1:
+                st.write('Train Shape:',X_train.shape)
+            with col2:
+                st.write('Test Shape:',X_test.shape)
+            
+
 
             # 2️⃣ Model Selection in Sidebar
             st.sidebar.header("⚙️ Model Selection")
