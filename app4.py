@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import io  # For file handling
+import io,re, sys  # For file handling
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -30,7 +30,7 @@ if uploaded_file:
     df = st.session_state["df_processed"]
 
     # Sidebar - Preprocessing Steps
-    preprocess_options = ["📊 Data Overview","🔎 Inconsistency", "📈 EDA", "⚙️ Feature Eng", "🤖 Train Model only"]
+    preprocess_options = ["📊 Data Overview","🔎 Inconsistency","custom code", "📈 EDA", "⚙️ Feature Eng", "🤖 Train Model only"]
 
     if df.isnull().sum().sum() > 0:
         preprocess_options.insert(1, "⚙️ Handle Missing Values")
@@ -135,7 +135,7 @@ if uploaded_file:
                 st.dataframe(df.head())
 
         # Choose Inconsistency Handling Method
-        inconsistency_option = st.radio("📌 Choose Inconsistency Handling:", ("Data Type Conversion", "Filter/Search", "Replace Values", "Remove Char", "Custom Code"))
+        inconsistency_option = st.radio("📌 Choose Inconsistency Handling:", ("Data Type Conversion", "Filter/Search", "Replace Values", "Remove Char"))
 
         # Data Type Conversion Handling
         if inconsistency_option == "Data Type Conversion":
@@ -203,31 +203,101 @@ if uploaded_file:
                 old_vl = st.text_input("✏️ Enter value to remove:")
             with col2:
                 exp = st.text_input("Enter Regular expression:")
+
             if old_vl or exp:
-                df[selected_col] = df[selected_col].replace(old_vl or exp, '', regex=True)
-                st.success(f"✅ '{old_vl}' removed from column {selected_col}")
+                df[selected_col] = df[selected_col].apply(lambda x: np.nan if str(x) == old_vl or (exp and re.fullmatch(exp, str(x))) 
+                                                        else str(x).replace(old_vl, '').strip() if old_vl 
+                                                        else re.sub(exp, '', str(x)).strip())
+                st.success(f"✅ '{old_vl or exp}' removed from column {selected_col}")
                 st.dataframe(df)
                 st.write("📌 Updated Dataset Preview:")
 
-        elif inconsistency_option == "Custom Code":
-            st.dataframe(df)
-            st.subheader("🧑‍💻 Write Your Custom Data Cleaning Code")
-            code_template = """
-# Example:
-# df['column_name'] = df['column_name'].str.strip()
-# df['date_column'] = pd.to_datetime(df['date_column'], errors='coerce')
-"""
-            custom_code = st.text_area("Write your Python code here:", code_template, height=150)
-            if st.button("🚀 Run Custom Code"):
-                try:
-                    exec(custom_code, {"df": df, "pd": pd})
-                    st.success("✅ Custom code executed successfully!")
-                    st.dataframe(df.head())
-                except Exception as e:
-                    st.error(f"❌ Error executing custom code: {e}")
 
+#         elif inconsistency_option == "Custom Code":
+#             st.dataframe(df)
+#             st.subheader("🧑‍💻 Write Your Custom Data Cleaning Code")
+#             code_template = """
+# # Example:
+# # df['column_name'] = df['column_name'].str.strip()
+# # df['date_column'] = pd.to_datetime(df['date_column'], errors='coerce')
+# """
+#             custom_code = st.text_area("Write your Python code here:", code_template, height=150)
+#             if st.button("🚀 Run Custom Code"):
+#                 try:
+#                     exec(custom_code, {"df": df, "pd": pd})
+#                     st.success("✅ Custom code executed successfully!")
+#                     st.dataframe(df.head())
+#                 except Exception as e:
+#                     st.error(f"❌ Error executing custom code: {e}")
+
+#         st.session_state.df = df
+#         st.session_state["df_processed"] = df
+
+    elif preprocess == "custom code":
+        st.dataframe(df)
+        st.subheader("🧑‍💻 Write Your Custom Data Cleaning Code")
+
+        # 📝 Code Template
+        code_template = """
+    # Example:
+    # df['column_name'] = df['column_name'].str.strip()
+    # df['date_column'] = pd.to_datetime(df['date_column'], errors='coerce')
+    # print(df['name'].value_counts())  # Example to display output like Jupyter Notebook
+    """
+
+        # 📄 Text Area for Custom Code Input
+        custom_code = st.text_area("Write your Python code here:", code_template, height=150)
+
+        # 🎛️ Output Display Options
+        output_type = st.radio(
+            "Select Output Type:",
+            ("Text Output", "DataFrame Preview"),
+            index=1
+        )
+
+        # 🚀 Run Code Button
+        if st.button("🚀 Run Code"):
+            try:
+                # 🔄 Capture Standard Output
+                output_buffer = io.StringIO()
+                sys.stdout = output_buffer  # Redirect stdout to the buffer
+
+                # 🔄 Execute Code with Proper DataFrame Reference
+                local_env = {"df": df, "pd": pd}
+
+                # 🧮 Execute Custom Code
+                exec(custom_code, {}, local_env)
+
+                # ✅ Success Message
+                st.success("✅ Custom code executed successfully!")
+
+                # 📄 Display Output Based on Selected Option
+                if output_type == "Text Output":
+                    st.write("### 📊 Code Output:")
+                    output_text = output_buffer.getvalue()
+                    if output_text:
+                        st.text(output_text)
+                    else:
+                        st.info("ℹ️ No text output to display.")
+                
+                elif output_type == "DataFrame Preview":
+                    st.write("### 📑 Updated DataFrame Preview:")
+                    if "df" in local_env:
+                        df = local_env["df"]
+                        st.dataframe(df.head())
+                    else:
+                        st.warning("⚠️ DataFrame not modified or not found in custom code.")
+
+            except Exception as e:
+                st.error(f"❌ Error executing custom code: {e}")
+
+            finally:
+                sys.stdout = sys.__stdout__  # Reset stdout to default
+
+        # 💾 Store Updated DataFrame in Session State
         st.session_state.df = df
         st.session_state["df_processed"] = df
+
 
 
     # **📊 EDA Section (Only Runs if `preprocess == "EDA"`)**
