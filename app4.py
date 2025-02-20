@@ -68,43 +68,57 @@ if uploaded_file:
             st.write(f"📊 Value Counts for {selected_column}:")
             st.write(df[selected_column].value_counts())
 
-    # ⚙️ HANDLE MISSING VALUES
+        # ⚙️ HANDLE MISSING VALUES
     elif preprocess == "⚙️ Handle Missing Values":
         df_missing = df.copy()
         for col in df_missing.columns:
             if df_missing[col].isnull().sum() > 0:
+                st.subheader(f"⚠️ Handling Missing Values in **{col}**")
                 # Categorical Columns
                 if df_missing[col].dtype == 'object':  
                     option = st.selectbox(f"Fill NaN values in {col}", ("Specific Value", "Drop"), key=col)
                     if option == "Specific Value":
-                        value = st.text_input(f"Enter specific value for {col}")
-                        if value:
+                        value = st.text_input(f"Enter specific value for {col}", key=f"value_{col}")
+                        if value and st.button(f"✅ Confirm Fill NaN in {col}", key=f"confirm_{col}"):
                             df_missing[col].fillna(value, inplace=True)
+                            st.success(f"✅ Filled NaN values in **{col}** with **{value}**")
                     elif option == "Drop":
-                        df_missing.dropna(subset=[col], inplace=True)
+                        if st.button(f"✅ Confirm Drop NaNs in {col}", key=f"drop_{col}"):
+                            df_missing.dropna(subset=[col], inplace=True)
+                            st.success(f"✅ Dropped rows with NaN in **{col}**")
 
                 # Numerical Columns
                 else:  
                     option = st.selectbox(f"Fill NaN values in {col}", 
-                                        ("Mean", "Median", "Mode", "Interquartile Range (IQR)"), key=col)
-                    if option == "Mean":
-                        df_missing[col].fillna(df_missing[col].mean(), inplace=True)
-                    elif option == "Median":
-                        df_missing[col].fillna(df_missing[col].median(), inplace=True)
-                    elif option == "Mode":
-                        df_missing[col].fillna(df_missing[col].mode()[0], inplace=True)
-                    elif option == "Interquartile Range (IQR)":
-                        Q1 = df_missing[col].quantile(0.25)
-                        Q3 = df_missing[col].quantile(0.75)
-                        IQR = Q3 - Q1
-                        df_missing[col].fillna(df_missing[col].median(), inplace=True)  
+                                        ("Mean", "Median", "Mode", "Interquartile Range (IQR)","Specific Value"), key=col)
+                    if option == "Specific Value":
+                        value = st.text_input(f"Enter specific value for {col}", key=f"num_value_{col}")
+                        if value and st.button(f"✅ Confirm Fill NaN in {col}", key=f"confirm_num_value_{col}"):
+                            df_missing[col].fillna(float(value), inplace=True)
+                            st.success(f"✅ Filled NaN values in **{col}** with **{value}**")
+                    elif st.button(f"✅ Confirm Fill NaN in {col}", key=f"confirm_num_{col}"):
+                        if option == "Mean":
+                            df_missing[col].fillna(df_missing[col].mean(), inplace=True)
+                            st.success(f"✅ Filled NaN values in **{col}** with Mean")
+                        elif option == "Median":
+                            df_missing[col].fillna(df_missing[col].median(), inplace=True)
+                            st.success(f"✅ Filled NaN values in **{col}** with Median")
+                        elif option == "Mode":
+                            df_missing[col].fillna(df_missing[col].mode()[0], inplace=True)
+                            st.success(f"✅ Filled NaN values in **{col}** with Mode")
+                        elif option == "Interquartile Range (IQR)":
+                            Q1 = df_missing[col].quantile(0.25)
+                            Q3 = df_missing[col].quantile(0.75)
+                            IQR = Q3 - Q1
+                            df_missing[col].fillna(df_missing[col].median(), inplace=True)  
+                            st.success(f"✅ Filled NaN values in **{col}** using IQR")
 
-        st.success("✅ Missing values handled successfully!")
         st.write("📌 Updated Dataset Preview After Handling Missing Values:")
         st.dataframe(df_missing.head())
 
         # Store in session state to keep modifications
         st.session_state["df_processed"] = df_missing
+
 
        # 🔎 INCONSISTENCY HANDLING
     elif preprocess == "Inconsistency":
