@@ -209,25 +209,25 @@ if uploaded_file:
                 st.dataframe(df)
                 st.write("📌 Updated Dataset Preview:")
 
-#         elif inconsistency_option == "Custom Code":
-#             st.dataframe(df)
-#             st.subheader("🧑‍💻 Write Your Custom Data Cleaning Code")
-#             code_template = """
-# # Example:
-# # df['column_name'] = df['column_name'].str.strip()
-# # df['date_column'] = pd.to_datetime(df['date_column'], errors='coerce')
-# """
-#             custom_code = st.text_area("Write your Python code here:", code_template, height=150)
-#             if st.button("🚀 Run Custom Code"):
-#                 try:
-#                     exec(custom_code, {"df": df, "pd": pd})
-#                     st.success("✅ Custom code executed successfully!")
-#                     st.dataframe(df.head())
-#                 except Exception as e:
-#                     st.error(f"❌ Error executing custom code: {e}")
+        elif inconsistency_option == "Custom Code":
+            st.dataframe(df)
+            st.subheader("🧑‍💻 Write Your Custom Data Cleaning Code")
+            code_template = """
+# Example:
+# df['column_name'] = df['column_name'].str.strip()
+# df['date_column'] = pd.to_datetime(df['date_column'], errors='coerce')
+"""
+            custom_code = st.text_area("Write your Python code here:", code_template, height=150)
+            if st.button("🚀 Run Custom Code"):
+                try:
+                    exec(custom_code, {"df": df, "pd": pd})
+                    st.success("✅ Custom code executed successfully!")
+                    st.dataframe(df.head())
+                except Exception as e:
+                    st.error(f"❌ Error executing custom code: {e}")
 
-#         st.session_state.df = df
-#         st.session_state["df_processed"] = df
+        st.session_state.df = df
+        st.session_state["df_processed"] = df
 
 
     # **📊 EDA Section (Only Runs if `preprocess == "EDA"`)**
