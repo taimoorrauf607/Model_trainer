@@ -275,7 +275,7 @@ if uploaded_file:
             with col1:
                 selected_column = st.selectbox("📌 Select Column", df.columns, key="univar_col")
             with col2:
-                chart_option = st.selectbox("📊 Select Chart Type", ["Histogram", "Box Plot", "Bar Chart"], key="univar_chart")
+                chart_option = st.selectbox("📊 Select Chart Type", ["Histogram", "Box Plot", "Bar Chart","Violin Plot","Pie Chart","Density Plot"], key="univar_chart")
 
             if st.button("➕ Add Univariate Plot", key="add_univar"):
                 st.session_state.eda_plots.append(("Univariate", selected_column, chart_option))
@@ -287,7 +287,7 @@ if uploaded_file:
                 x_axis = st.selectbox("📌 Select X-Axis", df.columns, key="bi_x")
             with col2:
                 y_axis = st.selectbox("📌 Select Y-Axis", df.columns, key="bi_y")
-            multi_chart_option = st.selectbox("📊 Select bivariate Chart Type", ["Scatter Plot", "Line Chart"], key="bi_chart")
+            multi_chart_option = st.selectbox("📊 Select bivariate Chart Type", ["Scatter Plot", "Line Chart","Heatmap","Joint Plot","Reg Plot","Hexbin Plot"], key="bi_chart")
 
             if st.button("➕ Add Bi-variate Plot", key="add_bi"):
                 st.session_state.eda_plots.append(("bivariate", x_axis, y_axis,multi_chart_option))
@@ -322,18 +322,36 @@ if uploaded_file:
                 elif chart == "Bar Chart":
                     df[col].value_counts().plot(kind="bar", ax=ax)
                     plt.xticks(rotation='vertical')
-                    
-            # Handle bivariate Analysis
+                elif chart == "Violin Plot":
+                    sns.violinplot(x=df[col], ax=ax)
+                elif chart == "Pie Chart":
+                    df[col].value_counts().plot(kind="pie", autopct='%1.1f%%', ax=ax)
+                    plt.ylabel('')
+                elif chart == "Density Plot":
+                    sns.kdeplot(df[col], ax=ax)
+
+            # Handle Bivariate Analysis
             elif plot[0] == "bivariate":
-                analysis, x_col, y_col,chart = plot  # Unpack 4 elements
+                analysis, x_col, y_col, chart = plot  # Unpack 4 elements
                 st.subheader(f"📊 {chart} for {x_col} vs {y_col}")
+
                 if chart == "Scatter Plot":
                     sns.scatterplot(x=df[x_col], y=df[y_col], ax=ax)
                     plt.xticks(rotation='vertical')
-                        
                 elif chart == "Line Chart":
                     sns.lineplot(x=df[x_col], y=df[y_col], ax=ax)
                     plt.xticks(rotation='vertical')
+                elif chart == "Heatmap":
+                    sns.heatmap(df[[x_col, y_col]].corr(), annot=True, cmap='coolwarm', ax=ax)
+                elif chart == "Hexbin Plot":
+                    if df[x_col].dtype in ['int64', 'float64'] and df[y_col].dtype in ['int64', 'float64']:
+                        ax.hexbin(df[x_col], df[y_col], gridsize=30, cmap='Blues')
+                elif chart == "Reg Plot":
+                    sns.regplot(x=df[x_col], y=df[y_col], ax=ax)
+                elif chart == "Joint Plot":
+                    sns.jointplot(x=df[x_col], y=df[y_col], kind='scatter')
+                    plt.xticks(rotation='vertical')
+
 
             # Handle Multivariate Analysis
             elif plot[0] == "Multivariate":
@@ -571,10 +589,9 @@ if uploaded_file:
                     try:
                         predictions = st.session_state["trained_model"].predict(test_df[st.session_state["feature_columns"]])
                         submission_df = pd.DataFrame({
-                            "id": range(300000, 300000 + len(test_df)),
-                            "submission": predictions
+                            "Loan_ID": range(300000, 300000 + len(test_df)),
+                            "Loan_Status": predictions
                         })
-
                         st.success("✅ Predictions made successfully!")
                         st.write("📄 Preview of Submission File:")
                         st.dataframe(submission_df.head())
