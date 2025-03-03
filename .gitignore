@@ -3,3 +3,4 @@ catboost_info
 *.pyc
 *.ipynb
 *.csv
+app3.py
