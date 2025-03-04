@@ -4,3 +4,4 @@ catboost_info
 *.ipynb
 *.csv
 app3.py
+extra.py
